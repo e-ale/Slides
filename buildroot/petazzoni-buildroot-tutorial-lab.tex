@@ -1,0 +1,642 @@
+\documentclass[a4paper,12pt,obeyspaces,spaces,hyphens]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[normalem]{ulem}
+\usepackage[vmargin=2cm, hmargin=1.5cm]{geometry}
+\usepackage{fancyhdr}      % Used for customization of header/foter
+\pagestyle{fancy}
+\usepackage{graphicx}
+\usepackage{titlesec}      % Used for \titleformat
+\usepackage[htt]{hyphenat} % I want hyphenation in {\tt ...} blocks
+\usepackage{xcolor}
+\usepackage{titling}
+\usepackage{eurosym}
+\usepackage{ifthen}
+\usepackage{hyperref}
+\usepackage[all]{hypcap}
+\usepackage{xparse}
+
+\usepackage[most]{tcolorbox}
+\definecolor{bg}{RGB}{220,220,220}
+
+% A nicer font
+\usepackage{palatino}
+
+%% Remove indentation on the first line of each paragraph, and add
+%% some space between each paragraph.
+\usepackage{parskip}
+
+\hypersetup{colorlinks=true,linkcolor=gray,urlcolor=gray}
+
+\fancyhead{}
+\fancyfoot{}
+
+\fancyhead[CO, CE]{\includegraphics[width=\textwidth]{header.jpg}}
+\fancyfoot[RO, LE] {\thepage}
+\fancyfoot[LO, RE] {\small Embedded Apprentice Linux Engineer - Getting started with Buildroot - \url{https://bootlin.com}}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+\setlength{\textheight}{56em}
+
+\definecolor{textcolor}{HTML}{4B6FA9}
+
+% Header style
+\titleformat{\section}{\color{textcolor}\normalfont\Large\sffamily\bfseries}{}{1em}{}[\vspace{2pt}\titlerule]
+\titleformat{\subsection}[display]{\normalfont\large\sffamily}{}{0pt}{}[\vspace{2pt}\titlerule]
+\titleformat{\subsubsection}[display]{\normalfont\sffamily}{}{0pt}{}
+
+% No section numbering
+\setcounter{secnumdepth}{0}
+
+% Customization of title and author style
+\pretitle{\begin{center}\Huge\sffamily}
+\preauthor{\begin{center}
+\large \sffamily \lineskip 0.2em%
+\begin{tabular}[t]{c}}
+\postauthor{\end{tabular}\par\end{center}}
+\predate{\begin{center}\large\sffamily}
+
+% Useful definitions
+
+\newcommand{\code}[1]
+{\path{#1}}
+
+\hypersetup{pdftitle={Getting started with Buildroot - Lab},
+  pdfauthor={Thomas Petazzoni, Bootlin}}
+
+\title{Getting started with Buildroot - Lab}
+\author{Thomas Petazzoni, Bootlin}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+These lab instructions are written for the {\em Getting started with
+  Buildroot} tutorial of the {\em Embedded Apprentice Linux Engineer}
+track. They are designed to work for the {\em PocketBeagle} hardware
+platform.
+
+\section{Initial configuration and build}
+
+Our first step to get started with Buildroot is obviously to build a
+minimal Linux system, with just a bootloader, Linux kernel and simple
+user-space.
+
+The Buildroot at \url{https://github.com/e-ale/buildroot-e-ale}
+provides a ready-to-use {\em defconfig} to the PocketBeagle
+platform. However, for educational purposes, we are going to start
+straight from the official vanilla Buildroot, and build our
+configuration from scratch.
+
+\subsection{Getting Buildroot}
+
+Start by cloning Buildroot's official Git repository:
+
+\begin{verbatim}
+$ git clone git://git.busybox.net/buildroot
+$ cd buildroot/
+\end{verbatim}
+
+(Note: if download speed is too slow, you can use the
+\code{buildroot.tar.xz} tarball provided by the instructor)
+
+We'll base our work on the 2018.02 release, which is the latest LTS
+release, so we create a branch based on the 2018.02 tag:
+
+\begin{verbatim}
+$ git checkout -b e-ale 2018.02
+\end{verbatim}
+
+\subsection{Creating a minimal configuration}
+
+Now it's time to start creating our configuration:
+
+\begin{verbatim}
+$ make menuconfig
+\end{verbatim}
+
+In the configuration, we'll have to customize a number of options, as
+detailed below. Of course, take this opportunity to navigate in all
+the options, and discover what Buildroot can do.
+
+\begin{itemize}
+
+\item In {\em Target options}
+
+  \begin{itemize}
+
+  \item Change {\em Target architecture} to {\em ARM (little endian)}
+
+  \item Change {\em Target architecture variant} to {\em Cortex-A8}
+
+  \end{itemize}
+
+\item In {\em Build options}, set {\em global patch directories} to
+  \code{board/e-ale/pocketbeagle/patches/}. This will allow us to put
+  patches for Linux, U-Boot other packages in subdirectories of
+  \code{board/e-ale/pocketbeagle/patches/}.
+
+\item In {\em Toolchain}
+
+  \begin{itemize}
+
+  \item Change {\em Toolchain type} to {\em External toolchain}. By
+    default, Buildroot builds its own toolchain, but it can also use
+    pre-built external toolchain. We'll use the latter, in order to
+    save build time. Since we've selected an ARM platform, a Linaro
+    toolchain is automatically selected, which will work for us.
+
+  \end{itemize}
+
+\item In {\em System configuration}, you can customize the {\em System
+    host name} and {\em System banner} if you wish. Keep the default
+  values for the rest.
+
+\item In {\em Kernel}
+
+  \begin{itemize}
+
+  \item Enable the {\em Linux kernel}, obviously!
+
+  \item Choose {\em Custom version} as the {\em Kernel version}
+
+  \item Choose {\em 4.14.24} as {\em Kernel version}
+
+  \item Patches will already be applied to the kernel, thanks to us
+    having defined a {\em global patch directory} above.
+
+  \item Choose \code{omap2plus} as the {\em Defconfig name}
+
+  \item We'll need the Device Tree of the PocketBeagle, so enable {\em
+      Build a Device Tree Blob (DTB)}
+
+  \item And use \code{am335x-pocketbeagle} as the {\em Device Tree
+      Source file names}
+
+  \end{itemize}
+
+\item In {\em Target packages}, we'll keep just Busybox enabled for
+  now. In the next sections, we'll enable more packages.
+
+\item In {\em Filesystem images}, enable {\em ext2/3/4 root
+    filesystem}, select the {\em ext4} variant. You can also disable
+  the {\em tar} filesystem image, which we won't need.
+
+\item In {\em Bootloaders}, enable {\em U-Boot}, and in {\em U-Boot}:
+
+  \begin{itemize}
+
+  \item Switch the {\em Build system} option to {\em Kconfig}: we are
+    going to use a modern U-Boot, so let's take advantage of its
+    modern build system!
+
+  \item Use a {\em Custom version} of value {\em 2018.01}. You'll
+    notice that the current default is already {\em 2018.01}. However,
+    Buildroot upstream is regularly updating this to the latest U-Boot
+    version. However, to have a reproducible setup, we really want to
+    use a fixed version.
+
+  \item Use \code{am335x_pocketbeagle} as the {\em Board defconfig}
+
+  \item The {\em U-Boot binary format} should be changed from
+    \code{u-boot.bin} to \code{u-boot.img}. Indeed, this second stage
+    bootloader will be loaded by a first stage bootloader, and needs
+    to have the proper header to be loaded by the first stage.
+
+  \item Enable {\em Install U-Boot SPL binary image} to also install
+    the first stage bootloader. Its name in {\em U-Boot SPL/TPL binary
+      image name(s)} should be changed to \code{MLO} since that's how
+    U-Boot names it, and how the AM335x expects it to be named.
+
+  \end{itemize}
+
+\end{itemize}
+
+As you have noticed, in the configuration, we have referenced
+\code{board/e-ale/pocketbeagle/patches} as a directory containing
+patches for various packages. We now need to add the U-Boot and Linux
+patches that add support for the {\em PocketBeagle}, which are not
+upstream yet. They are available from the \code{patches/} folder in
+the USB stick provided by your instructor, just copy it to
+\code{board/e-ale/pocketbeagle} so that you get the following
+directory hierarchy:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+$ tree board/e-ale/pocketbeagle/
+board/e-ale/pocketbeagle/
+- patches
+  - linux
+    - 0001-Stripped-back-pocketbeagle-devicetree.patch
+  - uboot
+    - 0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
+    - 0002-U-Boot-BeagleBone-Cape-Manager.patch
+    - 0003-pocketbeagle-tweaks.patch
+\end{verbatim}
+\end{tcolorbox}
+
+\subsection{Running the build}
+
+To start the build, you can run just \code{make}. But it's often
+convenient to keep the build output in a log file, so you can do:
+
+\begin{verbatim}
+$ make 2>&1 | tee build.log
+\end{verbatim}
+
+or alternatively use a wrapper script provided by Buildroot:
+
+\begin{verbatim}
+$ ./utils/brmake
+\end{verbatim}
+
+The build will take a while (about 14-15 minutes on your instructor's
+machine). If the Internet connectivity is slow, the USB stick that
+your instructor has provided contains the files to be downloaded. Just
+copy them into the \code{dl/} folder, and restart the build.
+
+The overall build takes quite some time, because the Linux kernel
+configuration \code{omap2plus_defconfig}, which supports all OMAP2,
+OMAP3, OMAP4 and AM335x platforms has a {\em lot} of drivers and
+options enabled. It would definitely be possible to make a smaller
+kernel configuration for the {\em Pocket Beagle}, reducing the kernel
+size and boot time.
+
+At the end of the build, the output is located in
+\code{output/images}. We have:
+
+\begin{itemize}
+\item \code{MLO}, the first stage bootloader
+\item \code{u-boot.img}, the second stage bootloader
+\item \code{zImage}, the Linux kernel image
+\item \code{am335x-pocketbeagle.dtb}, the Linux kernel Device Tree Blob
+\item \code{rootfs.ext4}, the root filesystem image
+\end{itemize}
+
+However, that doesn't immediately give us a bootable SD card image. We
+could create it manually, but that wouldn't be really nice. So move on
+to the next section to see how Buildroot can create the SD card image
+for you.
+
+\subsection{Creating a SD card image}
+
+To create a SD card image, we'll use a tool called \code{genimage},
+which provided a configuration file, will output the image of a block
+device, with multiple partitions, each containing a filesystem. See
+\url{https://git.pengutronix.de/cgit/genimage/tree/README.rst} for
+some documentation about {\em genimage} and its configuration file
+format.
+
+\code{genimage} needs to be called at the very end of the build. To
+achieve this, Buildroot provides a mechanism called {\em post-image
+  scripts}, which are arbitrary scripts called at the end of the
+build. We will use it to create a SD card image with:
+
+\begin{itemize}
+\item A FAT partition containing the bootloader images, the kernel
+  image and Device Tree
+\item An ext4 partition containing the root filesystem
+\end{itemize}
+
+In addition, the U-Boot bootloader for the {\em PocketBeagle} is
+configured by default to load a file called \code{uEnv.txt} to
+indicate what should be done at boot time. This file should also be
+stored in the first partition of the SD card.
+
+So, go back to \code{make menuconfig}, and adjust the following
+options:
+
+\begin{itemize}
+
+\item In {\em System configuration}
+  \begin{itemize}
+  \item Set {\em Custom scripts to run after creating filesystem
+      images} to \code{board/e-ale/pocketbeagle/post-image.sh}
+  \end{itemize}
+
+\item In {\em Host utilities}, enable \code{host genimage},
+  \code{host mtools} and \code{host dosfstools}. {\em mtools} and {\em
+    dosfstools} are needed because our {\em genimage} configuration
+  includes the creation of a FAT partition.
+
+\end{itemize}
+
+Copy \code{genimage.cfg}, \code{post-image.sh} and \code{uEnv.txt}
+from the USB stick provided by your instructor to
+\code{board/e-ale/pocketbeagle}.
+
+Restart the build again. Once the build is finished, you should now
+have a \code{sdcard.img} file in \code{output/images/}, ready for
+flashing:
+
+\begin{verbatim}
+$ sudo dd if=output/images/sdcard.img of=/dev/mmcblk0 bs=1M
+\end{verbatim}
+
+Insert the SD card in the PocketBeagle, and boot it. Provided you have
+a serial port connection at 115200 bps, you should see the system
+booting. You can login as \code{root} with no password, and explore
+the (very minimal) system. The system weights 18.4 MB, of which 12.1
+MB are kernel modules.
+
+\subsection{Storing our Buildroot configuration}
+
+Our Buildroot configuration is currently stored as \code{.config},
+which is not under version control and would be removed by a
+\code{make distclean}. So, let's store it as a {\em defconfig} file:
+
+\begin{verbatim}
+$ make BR2_DEFCONFIG=configs/eale_pocketbeagle_defconfig savedefconfig
+\end{verbatim}
+
+And then look at \code{configs/eale_pocketbeagle_defconfig} to see
+what your configuration looks like.
+
+\section{Network over USB and SSH connection}
+
+In this section, we will setup network over USB and add a SSH server
+to our build.
+
+To enable network over USB, we need to change two things to our root
+filesystem:
+
+\begin{itemize}
+
+\item Add an init script that will load the necessary kernel modules,
+  and do the appropriate \code{configfs} tweaks to set up the USB
+  gadget device. This script will be installed in
+  \code{/etc/init.d/S30usbgadget} in the root filesystem.
+
+\item Customize the \code{/etc/network/interfaces} file to set up the
+  \code{usb0} network interface.
+
+\end{itemize}
+
+In order to achieve this, we are going to use the concept of {\em root
+  filesystem overlay} of Buildroot. Filesystem overlays are simply
+directories that get copied over the root filesystem at the end of the
+build.
+
+Go to the Buildroot configuration, and in {\em System configuration},
+change {\em Root filesystem overlay directories} to
+\code{board/e-ale/pocketbeagle/overlay/}. In the same menu set the
+{\em Root password} to a non-empty string of your choice. Finally in
+the {\em Target packages} menu, {\em Networking applications} submenu,
+enable \code{dropbear}.
+
+Then, copy the contents of the \code{overlay/} directory available on
+the USB stick provided by your instructor to
+\code{board/e-ale/pocketbeagle/overlay/}. Take this opportunity to
+have a look at the contents of the overlay.
+
+Restart the build, reflash your system, and boot it. You should see
+the USB Gadget being configured at boot time. Its IP address is
+\code{192.168.42.2}. On your PC, assign \code{192.168.42.1} as the IP
+address of the USB network interface that just appeared, and then you
+can connect over SSH to your PocketBeagle:
+
+\begin{verbatim}
+$ ssh root@192.168.42.2
+\end{verbatim}
+
+\section{Developing an application}
+
+\subsection{Adding and testing {\em libgpiod}}
+
+Now, we will improve our application to make it use GPIOs through the
+{\em gpiod} library. To achieve this:
+
+\begin{itemize}
+
+\item Enable \code{libgpiod} and its tools from Buildroot
+  \code{menuconfig}
+
+\item Enable the \code{CONFIG_PINCTRL_MCP23S08} option in the Linux
+  kernel configuration, by running \code{make linux-menuconfig}. This
+  option enables the driver of the GPIO expander used on the {\em
+    BaconBits} add-on board. Note that this change to the Linux kernel
+  configuration will be lost if you do a \code{make clean}. To make
+  things persistent, the nicest solution is to add
+  \code{CONFIG_PINCTRL_MCP23S08=y} to a new config fragment file in
+  \code{board/e-ale/pocketbeagle/} and reference this fragment from
+  \code{BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES} Buildroot option. This
+  way your Linux kernel configuration is the standard
+  \code{omap2plus_defconfig} plus your tweaks.
+
+\end{itemize}
+
+Re-build your system and reflash it. You should now be able to play
+with GPIOs with the {\em libgpiod} tools. The syntax of the
+\code{gpioset} program is \code{gpioset <chip name/number>
+  <offset1>=<value1>}:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+# gpioset gpiochip4 0=0
+# gpioset gpiochip4 1=0
+# gpioset gpiochip4 1=1
+# gpioset gpiochip4 0=1
+\end{verbatim}
+\end{tcolorbox}
+
+\subsection{Cross-compiling a simple application}
+
+The USB stick provided by your instructor contains a small application
+that uses {\em libgpiod}, in the \code{eale-gpio-app} folder. Copy
+this folder side by side to Buildroot:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+- buildroot
+  - arch
+  - output
+  - ...
+- eale-gpio-app
+  - eale-gpio-app.c
+  - Makefile
+\end{verbatim}
+\end{tcolorbox}
+
+For now, we'll build it manually:
+
+\begin{verbatim}
+$ ./output/host/bin/arm-linux-gnueabihf-gcc -o eale-gpio-app \
+    ../eale-gpio-app/eale-gpio-app.c -lgpiod
+\end{verbatim}
+
+Transfer it to the target:
+
+\begin{verbatim}
+$ scp eale-gpio-app root@192.168.42.2:
+\end{verbatim}
+
+And then run it on the target:
+
+\begin{verbatim}
+# ./eale-gpio-app
+\end{verbatim}
+
+\subsection{A package for our application}
+
+Compiling your application manually is fine during development and if
+your application is simple, but it would be better to have Buildroot
+build it for us. To achieve this, we need to create a new Buildroot
+package.
+
+Start by creating the \code{package/eale-gpio-app} directory. Inside
+this directory, place a \code{Config.in} file containing:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+{\footnotesize
+\begin{verbatim}
+config BR2_PACKAGE_EALE_GPIO_APP
+        bool "eale-gpio-app"
+        depends on BR2_TOOLCHAIN_HEADERS_AT_LEAST_4_8 # libgpiod
+        select BR2_PACKAGE_LIBGPIOD
+        help
+          This is the E-ALE GPIO demo application.
+
+comment "eale-gpio-app needs kernel headers >= 4.8"
+        depends on !BR2_TOOLCHAIN_HEADERS_AT_LEAST_4_8
+\end{verbatim}
+}
+\end{tcolorbox}
+
+What this file does is:
+
+\begin{itemize}
+
+\item Describe an option that will be visible in {\em menuconfig} to
+  enable/disable the compilation of our demo application
+
+\item {\em Selects} the libgpiod package, because it is a dependency
+  of our demo application.
+
+\item The \code{BR2_TOOLCHAIN_HEADERS_AT_LEAST_4_8} dependency is
+  inherited from {\em libgpiod}. {\em libgpiod} requires at least
+  kernel headers from Linux 4.8, and therefore our application also
+  has this requirement.
+
+\end{itemize}
+
+Then, edit \code{package/Config.in} and add a new line in the {\em
+  Hardware handling} category to include the newly created
+\code{package/eale-gpio-app/Config.in}.
+
+Now, we need to describe how to build this package, by adding
+\code{package/eale-gpio-app/eale-gpio-app.mk} with the following
+contents:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+{\footnotesize
+\begin{verbatim}
+################################################################################
+#
+# eale-gpio-app
+#
+################################################################################
+
+EALE_GPIO_APP_SITE = $(TOPDIR)/../eale-gpio-app
+EALE_GPIO_APP_SITE_METHOD = local
+EALE_GPIO_APP_DEPENDENCIES = libgpiod
+
+define EALE_GPIO_APP_BUILD_CMDS
+    $(TARGET_MAKE_ENV) $(MAKE) $(TARGET_CONFIGURE_OPTS) -C $(@D)
+endef
+
+define EALE_GPIO_APP_INSTALL_TARGET_CMDS
+    $(TARGET_MAKE_ENV) $(MAKE) $(TARGET_CONFIGURE_OPTS) -C $(@D) \
+        DESTDIR=$(TARGET_DIR) install
+endef
+
+$(eval $(generic-package))
+\end{verbatim}
+}
+\end{tcolorbox}
+
+Make sure that the lines inside \code{EALE_GPIO_APP_BUILD_CMDS} and
+\code{EALE_GPIO_APP_INSTALL_TARGET_CMDS} are prefixed with one tab.
+
+What this file does is:
+
+\begin{itemize}
+
+\item Describe where the source code for our application is
+  located. Here, we use the {\em local} site method, to indicate that
+  the source code is locally available (as opposed to a tarball
+  available on a HTTP server)
+
+\item Describe the application dependency. This ensures that {\em
+    libgpiod} gets built before our application.
+
+\item Describe how to build and install our application, by using the
+  {\em Makefile} provided by the application. \code{TARGET_MAKE_ENV}
+  and \code{TARGET_CONFIGURE_OPTS} are variables provided by
+  Buildroot, which define standard variables such as \code{CC},
+  \code{CFLAGS}, etc. to make sure the application gets
+  cross-compiled.
+
+\end{itemize}
+
+With this in place, go to {\em menuconfig} and enable your
+application. Restart the build with \code{make}. You should now see
+your application being built and installed to the root
+filesystem. Reflash the SD card image, and verify that your
+application is in \code{/usr/bin/} on the target, and that it works as
+expected. If it does, congratulations!
+
+\section{Going further}
+
+\subsection{Using Linux kernel configuration fragment}
+
+When we enabled support for the MCP23S08 GPIO expander, we kept the
+Linux kernel configuration change only in
+\code{output/build/linux-4.14.24}, which means it will be lost when we
+will clean the build. To fix this:
+
+\begin{itemize}
+
+\item Add \code{CONFIG_PINCTRL_MCP23S08=y} to a new file called
+  \code{board/e-ale/pocketbeagle/linux.frag}
+
+\item In {\em menuconfig}, set
+  \code{BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES} to
+  \code{board/e-ale/pocketbeagle/linux.frag}
+
+\end{itemize}
+
+Then, do a complete rebuild of your kernel: \code{make linux-dirclean}
+followed by \code{make}.
+
+\subsection{Generate legal information}
+
+To help with license compliance, Buildroot can generate a legal
+report:
+
+\begin{verbatim}
+$ make legal-info
+\end{verbatim}
+
+Then look in \code{output/legal-info}, where you will find the license
+text for all packages, tarballs, as well as a manifest in the form of
+a CSV file (\code{manifest.csv}).
+
+\subsection{Analyzing the build}
+
+Sometimes, it is useful to analyze the size of the filesystem or the
+build duration. Buildroot provides convenient tooling to achieve
+this. For the data to be correct, we need to have a completely clean
+build:
+
+\begin{verbatim}
+$ make clean all
+\end{verbatim}
+
+Once the build is done, run \code{make graph-size} and look at
+\code{output/graphs/graph-size.pdf}. Then run \code{make graph-build}
+and look at \code{output/graphs/build.hist-build.pdf}.
+
+\end{document}
