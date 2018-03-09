@@ -1,0 +1,316 @@
+\documentclass[a4paper,12pt,obeyspaces,spaces,hyphens]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[normalem]{ulem}
+\usepackage[vmargin=2cm, hmargin=1.5cm]{geometry}
+\usepackage{fancyhdr}      % Used for customization of header/foter
+\pagestyle{fancy}
+\usepackage{graphicx}
+\usepackage{titlesec}      % Used for \titleformat
+\usepackage[htt]{hyphenat} % I want hyphenation in {\tt ...} blocks
+\usepackage{xcolor}
+\usepackage{titling}
+\usepackage{eurosym}
+\usepackage{ifthen}
+\usepackage{hyperref}
+\usepackage[all]{hypcap}
+\usepackage{xparse}
+\usepackage{forest}
+
+\usepackage[most]{tcolorbox}
+\definecolor{bg}{RGB}{220,220,220}
+
+% A nicer font
+\usepackage{palatino}
+
+%% Remove indentation on the first line of each paragraph, and add
+%% some space between each paragraph.
+\usepackage{parskip}
+
+\hypersetup{colorlinks=true,linkcolor=gray,urlcolor=gray}
+
+\fancyhead{}
+\fancyfoot{}
+
+\fancyhead[CO, CE]{\includegraphics[width=\textwidth]{header.jpg}}
+\fancyfoot[RO, LE] {\thepage}
+\fancyfoot[LO, RE] {\small E-ALE - Building Images with Yocto Project - \url{https://www.yoctoproject.org}}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+\setlength{\textheight}{56em}
+
+\definecolor{textcolor}{HTML}{4B6FA9}
+
+% Header style
+\titleformat{\section}{\color{textcolor}\normalfont\Large\sffamily\bfseries}{}{1em}{}[\vspace{2pt}\titlerule]
+\titleformat{\subsection}[display]{\normalfont\large\sffamily}{}{0pt}{}[\vspace{2pt}\titlerule]
+\titleformat{\subsubsection}[display]{\normalfont\sffamily}{}{0pt}{}
+
+% No section numbering
+\setcounter{secnumdepth}{0}
+
+% Customization of title and author style
+\pretitle{\begin{center}\Huge\sffamily}
+\preauthor{\begin{center}
+\large \sffamily \lineskip 0.2em%
+\begin{tabular}[t]{c}}
+\postauthor{\end{tabular}\par\end{center}}
+\predate{\begin{center}\large\sffamily}
+
+% Useful definitions
+
+\newcommand{\code}[1]
+{\path{#1}}
+
+\hypersetup{pdftitle={Building Images with Yocto Project - Lab},
+  pdfauthor={Tim Orling - Yocto Project, Intel Open Source Technology Center}}
+
+\title{Building Images with Yocto Project- Lab}
+\author{Tim Orling - Yocto Project, Intel Open Source Technology Center}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+These lab instructions are written for the {\em Building Images with Yocto Project} tutorial of the {\em Embedded Apprentice Linux Engineer}
+track. They are designed to work for the {\em PocketBeagle} hardware
+platform.
+
+\section{Initial build environment configuration}
+
+To get started with the Yocto Project, one of the easiest things to do is to clone the {\em poky} repository which will enable us to build the {\em poky} reference distribution.
+
+The metadata layers at \url{https://github.com/e-ale/yocto-e-ale}
+provide a layers to work with {\em poky} to build a complete Linux distribution for the {\em PocketBeagle}
+platform. Let us go ahead and clone those now:
+
+\begin{verbatim}
+cd ..
+git clone https://github.com/yocto-e-ale
+\end{verbatim}
+
+However, for educational purposes, we are going to start
+straight from the official vanilla {\em poky}, and build our
+configuration from scratch.
+
+\subsection{Getting poky}
+
+Start by cloning poky from the official Yocto Project Git repository:
+
+\begin{verbatim}
+$ git clone https://git.yoctoproject.org/git/poky
+$ cd poky/
+\end{verbatim}
+
+(Note: if download speed is too slow, you can use the
+\code{poky.tar.xz} tarball provided by the instructor)
+
+We'll base our work on "master", which is the latest development branch. This branch will be released soon as the {\em 2.5} or {\em sumo} release of the Yocto Project. Once it is released, an official {\em yocto-2.5} tag will become available and a {\em sumo} branch will be created which will provide on-going support for future dot releases (e.g. 2.5.1). As of this writing the project is in milestone three, or {\em M3} of the 2.5 release. 
+
+\break
+\subsection{Setting up our local configuration}
+
+We can now setup a build environment and begin by building an image for {\em qemuarm}:
+
+\begin{verbatim}
+$ . oe-init-build-env ../build-qemuarm
+\end{verbatim}
+
+By default, the above command will build images for the {\em qemux86} machine, so we will need to alter the default configuration to enable the {\em qemuarm} machine, by uncommenting (removing the leading \texttt{\#} on the following line in \texttt{conf/local.conf}:
+
+\begin{verbatim}
+#MACHINE ?= "qemuarm"
+\end{verbatim}
+
+To save build and download time, we will use {\em shared state} and {\em downloads} already prepared for you by your instructor. Shared state, also known as {\em sstate} or {\em sstate-cache}, is a specially organized directory or cache of all the {\em tasks} that have been run to build a particular package or image. For teams, like ours, that are rebuilding the same set of packages, this is a way to dramatically speed up build time. The downloads directory can also be shared to save {\em fetch} time, or download time from the internet. Change the following lines in \texttt{conf/local.conf}:
+
+\begin{verbatim}
+#DL_DIR ?= "${TOPDIR}/downloads"
+#SSTATE_DIR ?= "${TOPDIR}/sstate-cache"
+\end{verbatim}
+
+to
+
+\begin{verbatim}
+DL_DIR ?= "${HOME}/DOWNLOADS"
+SSTATE_DIR ?= "${HOME}/SSTATE"
+\end{verbatim}
+
+We also might want to build {\em debian} packages, like the {\em BeagleBoard.org} stock images. To do so we need to change the following line in \texttt{conf/local.conf}:
+
+\begin{verbatim}
+PACKAGE_CLASSES ?= "package_rpm"
+\end{verbatim}
+
+to
+
+\begin{verbatim}
+PACKAGE_CLASSES ?= "package_deb"
+\end{verbatim}
+
+Also, to help speed up the build and save disk space, we can prevent temporary work being saved to disk by appending the following to \texttt{conf/local.conf}:
+
+\begin{verbatim}
+INHERIT += "rm_work"
+\end{verbatim}
+
+\subsection{Building a minimal image}
+
+To build a minimal image, with a very basic text console environment, we run the following command:
+
+\begin{verbatim}
+bitbake core-image-minimal
+\end{verbatim}
+
+This will perform all the tasks necessary to fetch the source code, build the native host tools, compile and package the individual pieces of the image, and generate the root file system and the final image. 
+
+\subsection{Running our image in emulation}
+
+We can test the result of our efforts by running the image in the
+{\em qemu} emulated environment, without graphics and using non-privileged network devices:
+
+\begin{verbatim}
+runqemu nographic slirp
+\end{verbatim}
+
+Because the default setting is 
+\code{EXTRA_IMAGE_FEATURES ?= "debug-tweaks"}, we can simply login as the {\em root} user with no password. This is only for development purposes and you should never ship a product with such an insecure setting.
+
+
+Notice that the text before the login prompt represents the "branding" of the {\em poky} distribution:
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+Poky (Yocto Project Reference Distro) 2.4+snapshot qemuarm /dev/ttyAMA0
+
+qemuarm login:
+\end{verbatim}
+\end{tcolorbox}
+
+To change this default behavior, we will want to create our own custom Linux distribution, by creating a distro layer. We also want to add specific support for the {\em PocketBeagle}, so we will need to create a bsp layer. Finally, we will want to add some of our {\em recipes}, so we should create an application layer where we can put our work.
+
+\subsection{Create a distro layer}
+
+Bitbake comes with a tool to create the directory structure of a generic metadata layer. We will use this tool now to create our distro layer skeleton.
+
+\begin{verbatim}
+bitbake-layers create-layer ../yocto-e-ale/meta-e-ale-distro
+\end{verbatim}
+
+Let's look at what was created:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{forest}
+  for tree={
+    font=\ttfamily,
+    grow'=0,
+    child anchor=west,
+    parent anchor=south,
+    anchor=west,
+    calign=first,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}]
+      (!u.south west) +(7.5pt,0) |- node[fill,inner sep=1.25pt] {} (.child anchor)\forestoption{edge label};
+    },
+    before typesetting nodes={
+      if n=1
+        {insert before={[,phantom]}}
+        {}
+    },
+    fit=band,
+    before computing xy={l=15pt},
+  }
+[meta-e-ale-distro
+  [conf
+    [layer.conf]
+  ]
+  [COPYING.MIT]
+  [README]
+  [recipes-example
+    [example
+      [example.bb]
+    ]
+  ]
+]
+\end{forest}
+\end{tcolorbox}
+
+
+This is a generic metadata layer, more like an application or functional layer, and does not have the pieces that make it a distro layer. We will now delete what we do not need and add what is missing.
+
+\begin{verbatim}
+$ cd meta-e-ale
+$ rm -rf recipes-example
+$ mkdir -p conf/distro/include
+$ vim conf/distro/e-ale.conf
+\end{verbatim}
+
+Add the following content:
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+DISTRO = "e-ale"
+DISTRO_NAME = "e-ale Linux"
+
+DISTRO_VERSION = "1.0+snapshot-${DATE}"
+
+E_ALE_DEFAULT_DISTRO_FEATURES = "systemd"
+
+LAYER_CONF_VERSION ?= "7"
+
+# Add ssh server so we can connect to system running this image remotely,
+# add development tools (gcc, make, etc), and -dev packages for installed #packages.
+E_ALE_DEFAULT_DISTRO_FEATURES += "ssh-server-openssh tools-sdk dev-pkgs"
+
+DISTRO_FEATURES ?= "${DISTRO_FEATURES_DEFAULT} ${DISTRO_FEATURES_LIBC} ${E_ALE_DEFAULT_DISTRO_FEATURES}"
+
+VIRTUAL-RUNTIME_init_manager = "systemd"
+
+INHERIT += "uninative"
+
+UNINATIVE_URL = "http://downloads.yoctoproject.org/releases/uninative/1.7/"
+UNINATIVE_CHECKSUM[i686] ?= "de51bc9162b07694d3462352ab25f636a6b50235438c1b09440d7569e009123b"
+UNINATIVE_CHECKSUM[x86_64] ?= "ed033c868b87852b07957a4400f3b744c00aef5d6470346ea1a59b6d3e03075e"
+\end{verbatim}
+\end{tcolorbox}
+
+In order to add our branding before the login prompt, we need to enable our local changes to override the default in the \texttt{base-files} recipe:
+
+\begin{verbatim}
+$ mkdir -p recipes-core/base-files
+$ echo '# look for files in this layer first' > recipes-core/base-files_%.bbappend
+$ echo 'FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"' >> recipes-core/base-files_%.bbappend
+\end{verbatim}
+
+And then add our branding to the file which will be installed in our root file system at \texttt{/etc/issue}:
+
+\begin{verbatim}
+$ mkdir recipes-core/base-files/base-files
+$ vim recipes-core/base-files/base-files/issue
+\end{verbatim}
+
+Use the following content:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+                  _        _     _
+                 | |      | |   (_)
+  ___        __ _| | ___  | |    _ _ __  _   ___  __
+ / _ \______/ _` | |/ _ \ | |   | | '_ \| | | \ \/ /
+|  __/_____| (_| | |  __/ | |___| | | | | |_| |>  <
+ \___|      \__,_|_|\___| \_____/_|_| |_|\__,_/_/\_\
+
+Embedded Apprentice Linux Engineer http://e-ale.org \n \l
+\end{verbatim}
+\end{tcolorbox}
+
+We also want branding for network access (like ssh):
+\begin{verbatim}
+$ cp recipes-core/base-files/base-files/issue recipes-core/base-files/base-files/issue.net
+$ sed -i -e "s/\\n \\l/%h/g" recipes-core/base-files/base-files/issue.net
+\end{verbatim}
+
+(More to come...)
+
+\end{document}
