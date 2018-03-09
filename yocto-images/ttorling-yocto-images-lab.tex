@@ -193,6 +193,12 @@ To change this default behavior, we will want to create our own custom Linux dis
 
 \subsection{Create a distro layer}
 
+NOTE: if time is short or you want to skip ahead, the content of this section can be cloned by running:
+\begin{verbatim}
+$ cd ../yocto-e-ale
+$ git checkout 01_create_distro_layer
+\end{verbatim}
+
 Bitbake comes with a tool to create the directory structure of a generic metadata layer. We will use this tool now to create our distro layer skeleton.
 
 \begin{verbatim}
@@ -279,18 +285,21 @@ In order to add our branding before the login prompt, we need to enable our loca
 
 \begin{verbatim}
 $ mkdir -p recipes-core/base-files
-$ echo '# look for files in this layer first' > recipes-core/base-files_%.bbappend
-$ echo 'FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"' >> recipes-core/base-files_%.bbappend
+$ pushd recipes-core/base-files
+$ echo '# look for files in this layer first' > base-files_%.bbappend
+$ echo 'FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"' >> base-files_%.bbappend
 \end{verbatim}
 
-And then add our branding to the file which will be installed in our root file system at \texttt{/etc/issue}:
+This tells {\em Bitbake} to look at our \code{meta-e-ale-distro} layer before any other layer of lower priority (allows us to override default behavior). The \code{:=} operator says to immediately expand the variables \code{${THISDIR}} and \code{${PN}}. The \code{:} at the end is important and easy to miss, with that your paths will be mangled in a non-functional way.
+
+Next, we want to add our branding to the file which will be installed in our root file system at \texttt{/etc/issue}:
 
 \begin{verbatim}
 $ mkdir recipes-core/base-files/base-files
 $ vim recipes-core/base-files/base-files/issue
 \end{verbatim}
 
-Use the following content:
+We want our result to look like the following:
 
 \begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
 \begin{verbatim}
@@ -301,15 +310,237 @@ Use the following content:
 |  __/_____| (_| | |  __/ | |___| | | | | |_| |>  <
  \___|      \__,_|_|\___| \_____/_|_| |_|\__,_/_/\_\
 
-Embedded Apprentice Linux Engineer http://e-ale.org \n \l
+Embedded Apprentice Linux Engineer http://e-ale.org
+\end{verbatim}
+\end{tcolorbox}
+
+Unfortunately, we need to escape all the backslash characters, so the actual content is less readable in the file itself:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+                  _        _     _
+                 | |      | |   (_)
+  ___        __ _| | ___  | |    _ _ __  _   ___  __
+ / _ \\______/ _` | |/ _ \\ | |   | | '_ \\| | | \\ \\/ /
+|  __/_____| (_| | |  __/ | |___| | | | | |_| |>  <
+ \\___|      \\__,_|_|\\___| \\_____/_|_| |_|\\__,_/_/\\_\\
+
+Embedded Apprentice Linux Engineer http://e-ale.org
 \end{verbatim}
 \end{tcolorbox}
 
 We also want branding for network access (like ssh):
 \begin{verbatim}
-$ cp recipes-core/base-files/base-files/issue recipes-core/base-files/base-files/issue.net
-$ sed -i -e "s/\\n \\l/%h/g" recipes-core/base-files/base-files/issue.net
+$ pushd recipes-core/base-files/base-files
+$ cp issue issue.net
+$ popd
 \end{verbatim}
+
+\subsubsection{Configuration Templates}
+We would like to make it easy to start working with our distro layer, so we will provide templates for \code{local.conf} and \code{bblayers.conf}. These are created in the \code{meta-e-ale-disro/conf} directory as \code{local.conf.sample} and \code{bblayers.conf.sample}.
+
+
+For \code{local.conf.sample}, we can simply copy our \code{local.conf} from our prior session and just change the distro from "poky" to "e-ale":
+\begin{verbatim}
+$ cp ../build-qemuarm/conf/local.conf \
+   meta-e-ale-distro/conf/local.conf.sample
+$ sed -i -e 's:DISTRO = "poky":DISTRO = "e-ale":g' \
+   meta-e-ale-distro/conf/local.conf.sample
+\end{verbatim}
+
+
+For \code{bblayers.conf.sample}, the template has content that
+is automatically replaced, so the syntax is a bit trickier and we use
+the following content:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+# LAYER_CONF_VERSION is increased each time build/conf/bblayers.conf
+# changes incompatibly
+LCONF_VERSION = "1"
+
+BBPATH = "${TOPDIR}"
+BBFILES ?= ""
+
+BBLAYERS ?= " \
+  ##OEROOT##/meta \
+  ##OEROOT##/../yocto-e-ale/meta-e-ale-distro \
+  "
+\end{verbatim}
+\end{tcolorbox}
+
+The special tokens \code{##OEROOT##} are substituted (with the full path to openembedded-core) automatically when the template is used to create the \code{bblayers.conf} file. For now, we only include the distro layer we are currently working on. We will add more layers in the next sections. Be careful with the paths that you use, as you need to remember that this file will be sourced in the context of the environment variable \code{${OEROOT}}, which in our usage will be set to be the "poky" directory by our \code{init-build-env} script. We will populate that script now.
+
+Rather than using the default {\em openembedded-core} init script contained in {\em poky}, we will use our own that will setup the build environment for our distro (and in the next section, board support for the {\em PocketBeagle}).
+
+Create the build environment initialization script \code{init-build-env} in the \code{yocto-e-ale} directory with the following content:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+!/bin/sh
+
+# OE Build Environment Setup Script
+#
+# Copyright (C) 2006-2011 Linux Foundation
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+#
+# Normally this is called as '. ./oe-init-build-env <builddir>'
+#
+# This works in most shells (not dash), but not all of them \
+pass the arguments
+# when being sourced.  To workaround the shell limitation \
+use "set <builddir>"
+# prior to sourcing this script.
+#
+# LAYER_CONF_VERSION is increased each time \
+build/conf/bblayers.conf
+# changes incompatibly
+LCONF_VERSION = "7"
+    THIS_SCRIPT_DIR=$(dirname "$THIS_SCRIPT")
+    THIS_SCRIPT_DIR=$(readlink -f "$THIS_SCRIPT_DIR")
+
+    if [ -d "$THIS_SCRIPT_DIR/meta-e-ale-distro/conf" ]; then
+        TEMPLATECONF="$THIS_SCRIPT_DIR/meta-e-ale-distro/conf"
+    elif [ -f "$THIS_SCRIPT_DIR/.templateconf" ]; then
+        source $THIS_SCRIPT_DIR/.templateconf
+    elif [ -d "$THIS_SCRIPT_DIR/.template" ]; then
+        TEMPLATECONF="$THIS_SCRIPT_DIR/.template"
+    fi
+fi
+\end{verbatim}
+\end{tcolorbox}
+
+continued:
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+if [ -z "$OEROOT" ]; then
+    OEROOT=$(dirname "$THIS_SCRIPT")/../poky
+    OEROOT=$(readlink -f "$OEROOT")
+fi
+
+export OEROOT
+
+if [ -z "$BITBAKEDIR" ]; then
+    BITBAKEDIR=$(dirname "$THIS_SCRIPT")/../poky/bitbake
+    BITBAKEDIR=$(readlink -f "$BITBAKEDIR")
+fi
+
+export BITBAKEDIR
+
+unset THIS_SCRIPT_DIR
+unset THIS_SCRIPT
+
+. $OEROOT/scripts/oe-buildenv-internal &&
+    TEMPLATECONF="$TEMPLATECONF" \
+    $OEROOT/scripts/oe-setup-builddir || {
+    unset OEROOT
+    return 1
+}
+unset OEROOT
+
+[ -z "$BUILDDIR" ] || cd "$BUILDDIR"
+
+# Shutdown any bitbake server if the BBSERVER variable is not set
+if [ -z "$BBSERVER" ] && [ -f bitbake.lock ]; then
+    grep ":" bitbake.lock > /dev/null && BBSERVER=$(cat \
+    bitbake.lock) bitbake --status-only
+    if [ $? = 0 ]; then
+        echo "Shutting down bitbake memory resident server \
+        with bitbake -m"
+        BBSERVER=$(cat bitbake.lock) bitbake -m
+    fi
+fi
+\end{verbatim}
+\end{tcolorbox}
+
+We can now create a new build environment with our new distro layer:
+
+\begin{verbatim}
+$ . ./init-build-env ../build-e-ale-1
+$ bitbake core-image-minimal
+$ runqemu nographic slirp
+\end{verbatim}
+
+The text at the login will now be what we want for our branding:
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+                  _        _     _
+                 | |      | |   (_)
+  ___        __ _| | ___  | |    _ _ __  _   ___  __
+ / _ \______/ _` | |/ _ \ | |   | | '_ \| | | \ \/ /
+|  __/_____| (_| | |  __/ | |___| | | | | |_| |>  <
+ \___|      \__,_|_|\___| \_____/_|_| |_|\__,_/_/\_\
+
+Embedded Apprentice Linux Engineer http://e-ale.org
+e-ale Linux 1.0+snapshot qemuarm ttyAMA0
+
+qemuarm login:
+\end{verbatim}
+\end{tcolorbox}
+
+Just to quickly review, our directory structure should now look like the following:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{forest}
+  for tree={
+    font=\ttfamily,
+    grow'=0,
+    child anchor=west,
+    parent anchor=south,
+    anchor=west,
+    calign=first,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}]
+      (!u.south west) +(7.5pt,0) |- node[fill,inner sep=1.25pt] {} (.child anchor)\forestoption{edge label};
+    },
+    before typesetting nodes={
+      if n=1
+        {insert before={[,phantom]}}
+        {}
+    },
+    fit=band,
+    before computing xy={l=15pt},
+  }
+[yocto-e-ale
+  [init-build-env]
+  [meta-e-ale-distro
+    [conf
+      [bblayers.conf.sample]
+      [distro
+        [e-ale.conf]
+      ]
+      [layer.conf]
+      [local.conf.sample]
+    ]
+    [COPYING.MIT]
+    [README]
+    [recipes-core
+      [base-files
+        [base-files
+          [issue]
+          [issue.net]
+        ]
+        [base-files\_\%.bbappend]
+      ]
+    ]
+  ]
+]
+\end{forest}
+\end{tcolorbox}
 
 (More to come...)
 
