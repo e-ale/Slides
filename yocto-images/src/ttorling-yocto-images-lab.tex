@@ -16,9 +16,11 @@
 \usepackage[all]{hypcap}
 \usepackage{xparse}
 \usepackage{forest}
+\usepackage{verbatimbox}
 
 \usepackage[most]{tcolorbox}
 \definecolor{bg}{RGB}{220,220,220}
+\definecolor{notes}{RGB}{255,255,165}
 
 % A nicer font
 \usepackage{palatino}
@@ -80,6 +82,9 @@ track. They are designed to work for the {\em PocketBeagle} hardware
 platform.
 
 \section{Initial build environment configuration}
+\begin{tcolorbox}[enhanced jigsaw,colback=notes,boxrule=0pt,arc=0pt]
+NOTE: This lab and the \code{yocto-intro} lab were written independently at first, so this section should be review from that session and you can skip ahead to the next section.
+\end{tcolorbox}
 
 To get started with the Yocto Project, one of the easiest things to do is to clone the {\em poky} repository which will enable us to build the {\em poky} reference distribution.
 
@@ -110,7 +115,6 @@ $ cd poky/
 
 We'll base our work on "master", which is the latest development branch. This branch will be released soon as the {\em 2.5} or {\em sumo} release of the Yocto Project. Once it is released, an official {\em yocto-2.5} tag will become available and a {\em sumo} branch will be created which will provide on-going support for future dot releases (e.g. 2.5.1). As of this writing the project is in milestone three, or {\em M3} of the 2.5 release. 
 
-\break
 \subsection{Setting up our local configuration}
 
 We can now setup a build environment and begin by building an image for {\em qemuarm}:
@@ -189,15 +193,252 @@ qemuarm login:
 \end{verbatim}
 \end{tcolorbox}
 
-To change this default behavior, we will want to create our own custom Linux distribution, by creating a distro layer. We also want to add specific support for the {\em PocketBeagle}, so we will need to create a bsp layer. Finally, we will want to add some of our {\em recipes}, so we should create an application layer where we can put our work.
+To change this default behavior, we will want to create our own custom Linux distribution, by creating a distro layer. We also want to add specific support for the {\em PocketBeagle}, so we will need to create a bsp layer. We will want to add some of our {\em recipes}, so we should create an application layer where we can put our work.
+
+\subsection{Create application layer}
+\begin{tcolorbox}[enhanced jigsaw,colback=notes,boxrule=0pt,arc=0pt]
+NOTE: This lab was originally written with the intent to create the distro and bsp layers first, but it makes more sense to follow up with your experience in the \code{yocto-intro} course. We will instead jump straight to the creation of the application layer. We will be using the distro and bsp layers, but we will go over those layers after this section (or leave those sections as follow up to do on your own).
+\end{tcolorbox}
+
+\subsection{Create application layer}
+\begin{tcolorbox}[enhanced jigsaw,colback=notes,boxrule=0pt,arc=0pt]
+NOTE: if time is short or you want to skip ahead, the content of this section can be cloned by running:
+\begin{verbatim}
+$ cd ../yocto-e-ale
+$ git checkout 03_create_apps_layer
+\end{verbatim}
+
+If you are running the lab "out of order", meaning starting with the application layer first, you should start with:
+\begin{verbatim}
+$ cd ../yocto-e-ale
+$ git checkout 02_create_bsp_layer
+\end{verbatim}
+As this will prepare you to run the instructions in this section.
+\end{tcolorbox}
+
+First, we will use the \code{bitbake-layers} tool to create a simple, but valid, layer skeleton that we can build upon:
+
+\begin{verbatim}
+$ bitbake-layers create-layer ../yocto-e-ale/meta-e-ale-apps
+\end{verbatim}
+
+\subsubsection{Add \texttt{hello-recipe} to our image}
+In the earlier \code{yocto-intro} session, you created a "hello world" application. We will now add that to our new \code{meta-e-ale-apps layer}.
+
+\begin{verbatim}
+$ mv ${HOME}/e-ale/hello-recipe meta-e-ale-apps/recipes-example
+\end{verbatim}
+
+We want our image to always build with this recipe, so we are going to create an image append recipe and add to it. Note that image recipes are different in that they do not have a version (\code{PV}).
+
+\begin{verbatim}
+$ mkdir -p recipes-image/images
+$ vim recipes-image/images/core-image-minimal.bbappend
+\end{verbatim}
+
+There are several ways we can add the "hello" recipe to the image, but the author's favorite is the \code{CORE_IMAGE_EXTRA_INSTALL} variable. Use the following as the contents for the bbappend file:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+CORE_IMAGE_EXTRA_INSTALL += "hello"
+\end{verbatim}
+\end{tcolorbox}
+
+We can now re-build \code{core-image-minimal} and our "hello" program will be included:
+
+\begin{verbatim}
+$ bitbake core-image-minimal
+$ runqemu nographic slirp
+...
+root@qemuarm:~# hello
+\end{verbatim}
+
+\subsubsection{Using \texttt{devtool} in our workflow}
+One of the most important changes the Yocto Project has brought since the the Open Embedded Classic days is improved developer workflow tools. The poster-child for developer workflow tools is {\em devtool}.
+
+Just to show the process, we are going to add another "hello" program, this time from GNU \footnote{https://www.gnu.org/software/hello/}. To keep this recipe distinct from our previous "hello" recipe, we will name this package "gnu-hello". Since both install to \code{/usr/bin/hello} they will not coexist, so this is mostly just an excercise to show you how to use \code{devtool add} with a known, simple package.
+
+\begin{verbatim}
+$ devtool add gnu-hello https://ftp.gnu.org/gnu/hello/\
+hello-2.10.tar.gz
+\end{verbatim}
+
+What did \code{devtool} create? All the work is in a temporary "sandbox" layer in your build directory. This layer is called "workspace" by default.
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{forest}
+  for tree={
+    font=\ttfamily,
+    grow'=0,
+    child anchor=west,
+    parent anchor=south,
+    anchor=west,
+    calign=first,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}]
+      (!u.south west) +(7.5pt,0) |- node[fill,inner sep=1.25pt] {} (.child anchor)\forestoption{edge label};
+    },
+    before typesetting nodes={
+      if n=1
+        {insert before={[,phantom]}}
+        {}
+    },
+    fit=band,
+    before computing xy={l=15pt},
+  }
+[workspace
+  [appends
+    [gnu-hello\_2.10.bbappend]
+  ]
+  [conf
+    [layer.conf]
+  ]
+  [README]
+  [recipes
+    [gnu-hello
+      [gnu-hello\_2.10.bb]
+    ]
+  ]
+  [sources
+    [gnu-hello
+      [...]
+    ]
+  ]
+]
+\end{forest}
+\end{tcolorbox}
+
+We can build our "sandboxed" recipe with the following command:
+\begin{verbatim}
+$ devtool build gnu-hello
+\end{verbatim}
+
+\begin{tcolorbox}[enhanced jigsaw,colback=notes,boxrule=0pt,arc=0pt]
+Note: there is an issue with this source that causes it to fail to build the first time. This is a known issue, but we have not fixed it yet. Simply run the above command again and it will build successfully the second time.
+\end{tcolorbox}
+
+We can add this recipe to our image if we like, but note that the binary will probably overwrite the \code{hello-recipe} we added earlier:
+\begin{verbatim}
+$ sed -i -e 's:"hello":"gnu-hello hello":g' recipes-image/images/\
+core-image-minimal.bbappend
+\end{verbatim}
+
+Now, if we are satisfied with our recipe, we can add it to our layer with the \code{devtool finish} command. This command takes a recipe name and a destination (path to layer) as arguments. It will complain that our source is not clean, so we will also use the \code{-f} or "force" option:
+
+\begin{verbatim}
+$ devtool finish -f gnu-hello ../yocto-e-ale/meta-e-ale-apps/recipes-example/
+\end{verbatim}
+
+A \code{NOTE} statement will let you know that the \code{gnu-hello} source directory has not been deleted automatically, but that you can delete it now. This is because \code{devtool} never wants to assume it knows what is safe to erase or not. Note, however, that if you were to try to work with the same recipe again with \code{devtool}, that it will refuse to do anything if the source directory of the same name already exists. It is good practice to go ahead and remove the source directory after you are finished:
+
+\begin{verbatim}
+$ rm -rf workspace/sources/gnu-hello
+\end{verbatim}
+
+\subsubsection{Upgrading recipes with \texttt{devtool}}
+Another common task in embedded development is upgrading an existing application to the latest upstream version. We are going to use the \code{nano} text editor as an example.
+
+We are going to cheat and grab the existing 2.7.4 recipe from the \code{meta-openembedded/meta-oe} layer. We will use \code{devtool} to upgrade the \code{nano} editor to the latest version \footnote{https://www.nano-editor.org}.
+
+\begin{verbatim}
+$ mkdir recipes-support/nano
+$ pushd recipes-support/nano
+$ wget http://git.openembedded.org/meta-openembedded/plain/ \
+meta-oe/recipes-support/nano/nano_2.7.4.bb
+$ wget http://git.openembedded.org/meta-openembedded/plain/ \
+meta-oe/recipes-support/nano/nano.inc
+$ popd
+\end{verbatim}
+
+Let's go ahead and build this recipe:
+\begin{verbatim}
+$ bitbake nano
+\end{verbatim}
+
+We can add it to our image (this syntax is assuming you did not add "gnu-hello" to your image):
+\begin{verbatim}
+$ sed -i -e 's:"hello":"hello nano":g' recipes-image/images/ \
+core-image-minimal.bbappend
+\end{verbatim}
+
+We can rebuild our image and then run the "nano" program.
+\begin{verbatim}
+$ bitbake core-image-minimal
+$ runqemu nographic slirp
+...
+root@qemuarm:~# nano
+\end{verbatim}
+
+Now upgrade the version to the latest release (2.9.4 as of this writing):
+\begin{verbatim}
+$ devtool upgrade nano
+\end{verbatim}
+
+Notice that we did not provide a version to which to upgrade. Because \code{devtool} knows about package data (both parsed when \code{bitbake} first starts and built package data, which helps it to better determine dependencies).
+
+Behind the scenes, \code{devtool} is using a default value for \code{UPSTREAM_CHECK_REGEX}, a pattern to use to determine the latest version from the upstream source (the \code{SRC_URI}). The combination of this knowledge and the current version (\code{PV}) is all that is needed to know whether or not we need to upgrade at all and what version to which to upgrade. Note that some packages need help with the \code{UPSTREAM_CHECK_REGEX}, so the default values won't always work.
+
+What did \code{devtool} create?
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{forest}
+  for tree={
+    font=\ttfamily,
+    grow'=0,
+    child anchor=west,
+    parent anchor=south,
+    anchor=west,
+    calign=first,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}]
+      (!u.south west) +(7.5pt,0) |- node[fill,inner sep=1.25pt] {} (.child anchor)\forestoption{edge label};
+    },
+    before typesetting nodes={
+      if n=1
+        {insert before={[,phantom]}}
+        {}
+    },
+    fit=band,
+    before computing xy={l=15pt},
+  }
+[workspace
+  [appends
+    [nano\_2.9.4.bbappend]
+  ]
+  [conf
+    [layer.conf]
+  ]
+  [README]
+  [recipes
+    [nano
+      [nano\_2.9.4.bb]
+      [nano.inc]
+    ]
+  ]
+  [sources
+    [nano
+      [...]
+    ]
+  ]
+]
+\end{forest}
+\end{tcolorbox}
+
+Finally, let us finish with our work on \code{nano} and clean up (again forcing the finish even though our source tree is "not clean"):
+
+\begin{verbatim}
+$ devtool finish -f nano ../yocto-e-ale/meta-e-ale-apps/recipes-support/
+$ rm -rf workspace/sources/nano
+\end{verbatim}
 
 \subsection{Create a distro layer}
-
+\begin{tcolorbox}[enhanced jigsaw,colback=notes,boxrule=0pt,arc=0pt]
 NOTE: if time is short or you want to skip ahead, the content of this section can be cloned by running:
 \begin{verbatim}
 $ cd ../yocto-e-ale
 $ git checkout 01_create_distro_layer
 \end{verbatim}
+\end{tcolorbox}
 
 Bitbake comes with a tool to create the directory structure of a generic metadata layer. We will use this tool now to create our distro layer skeleton.
 
@@ -263,7 +504,7 @@ DISTRO_VERSION = "1.0+snapshot-${DATE}"
 
 E_ALE_DEFAULT_DISTRO_FEATURES = "systemd"
 
-LAYER_CONF_VERSION ?= "7"
+LAYER_CONF_VERSION ?= "1"
 
 # Add ssh server so we can connect to system running this image remotely,
 # add development tools (gcc, make, etc), and -dev packages for installed #packages.
@@ -542,6 +783,233 @@ Just to quickly review, our directory structure should now look like the followi
 \end{forest}
 \end{tcolorbox}
 
-(More to come...)
+\subsection{Create a bsp layer}
+
+\begin{tcolorbox}[enhanced jigsaw,colback=notes,boxrule=0pt,arc=0pt]
+NOTE: if time is short or you want to skip ahead, the content of this section can be cloned by running:
+\begin{verbatim}
+$ cd ../yocto-e-ale
+$ git checkout 02_create_bsp_layer
+\end{verbatim}
+\end{tcolorbox}
+
+Similar to what we did in the prior section, we will use the \code{bitbake-layers} tool to create our bsp layer skeleton.
+
+\begin{verbatim}
+bitbake-layers create-layer ../yocto-e-ale/meta-e-ale-bsp
+\end{verbatim}
+
+This is a generic metadata layer, more like an application or functional layer, and does not have the pieces that make it a bsp layer. We will now delete what we do not need and add what is missing.
+
+\begin{verbatim}
+$ pushd meta-e-ale-bsp
+$ rm -rf recipes-example
+$ mkdir -p conf/machine/include
+$ vim conf/machine/pocketbeagle.conf
+\end{verbatim}
+
+We can borrow some hints from Koen Kooi's fork of the \code{meta-beagleboard} layer \footnote{https://github.com/koenkooi/meta-beagleboard/blob/master/common-bsp/conf/machine/pocketbeagle.conf}. He recently updated his fork for a {\em PocketBeagle} demo for {\em FOSDEM 2018} \footnote{https://plus.google.com/+KoenKooi/posts/dVnZfMgZ9Ma}.
+
+Use the following content for \code{pocketbeagle.conf}:
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+include conf/machine/include/ti33x.inc
+
+PREFERRED_PROVIDER_virtual/kernel = "linux-pocketbeagle"
+
+SPL_BINARY = "MLO"
+PREFERRED_PROVIDER_virtual/bootloader = "u-boot"
+PREFERRED_PROVIDER_u-boot = "u-boot"
+\end{verbatim}
+\end{tcolorbox}
+
+For simplicity, we are going to copy some dependent files from the \code{meta-ti} layer, although we could also clone and depend on that vendor layer. We plan to go into more detail of utilizing the \code{meta-ti} layer in a future advanced training session.
+
+\begin{verbatim}
+$ pushd conf/machine/include
+$ wget http://git.yoctoproject.org/cgit/cgit.cgi/meta-ti/plain/ \
+conf/machine/include/ti33x.inc
+$ wget http://git.yoctoproject.org/cgit/cgit.cgi/meta-ti/plain/ \
+conf/machine/include/ti-soc.inc
+$ popd
+\end{verbatim}
+
+In our \code{pocketbeagle.conf}, we set the \code{PREFERRED_PROVIDER} for the \code{virtual/kernel} to be "linux-pocketbeagle". That configuration does not exist, so we will create it. First we need to create the directory structure for this recipe.
+
+\begin{verbatim}
+$ mkdir -p recipes-kernel/linux/linux-pocketbeagle
+$ vim recipes-kernel/linux/linux-pocketbeagle_4.14.bb
+\end{verbatim}
+
+We will base our recipe on \code{meta-skeleton/recipes-kernel/linux/linux-yocto-custom.bb}. Use the following content:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+# linux-pocketbeagle.bb:
+#
+#   Based on meta-skeleteon/recipes-kernel/linux/linux-yocto-custom.bb
+#
+#   An example kernel recipe that uses the linux-yocto and oe-core
+#   kernel classes to apply a subset of yocto kernel management to git
+#   managed kernel repositories.
+#
+#   To use linux-yocto-custom in your layer, copy this recipe (optionally
+#   rename it as well) and modify it appropriately for your machine. i.e.:
+#
+#     COMPATIBLE_MACHINE_yourmachine = "yourmachine"
+#
+#   You must also provide a Linux kernel configuration. The most direct
+#   method is to copy your .config to files/defconfig in your layer,
+#   in the same directory as the copy (and rename) of this recipe and
+#   add file://defconfig to your SRC_URI.
+#
+#   To use the yocto kernel tooling to generate a BSP configuration
+#   using modular configuration fragments, see the yocto-bsp and
+#   yocto-kernel tools documentation.
+#
+# Warning:
+#
+#   Building this example without providing a defconfig or BSP
+#   configuration will result in build or boot errors. This is not a
+#   bug.
+#
+#
+\end{verbatim}
+\end{tcolorbox}
+
+continued:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+# Notes:
+#
+#   patches: patches can be merged into to the source git tree itself,
+#            added via the SRC_URI, or controlled via a BSP
+#            configuration.
+#
+#   defconfig: When a defconfig is provided, the linux-yocto configuration
+#              uses the filename as a trigger to use a 'allnoconfig' baseline
+#              before merging the defconfig into the build.
+#
+#              If the defconfig file was created with make_savedefconfig,
+#              not all options are specified, and should be restored with their
+#              defaults, not set to 'n'. To properly expand a defconfig like
+#              this, specify: KCONFIG_MODE="--alldefconfig" in the kernel
+#              recipe.
+#
+#   example configuration addition:
+#            SRC_URI += "file://smp.cfg"
+#   example patch addition (for kernel v4.x only):
+#            SRC_URI += "file://0001-linux-version-tweak.patch"
+#   example feature addition (for kernel v4.x only):
+#            SRC_URI += "file://feature.scc"
+#
+
+inherit kernel
+require recipes-kernel/linux/linux-yocto.inc
+
+# Override SRC_URI in a copy of this recipe to point at a different source
+# tree if you do not want to build from Linus' tree.
+SRC_URI = "\
+    git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git;protocol=git;nocheckout=1;name=stable \
+    file://defconfig \
+    file://0001-Stripped-back-pocketbeagle-devicetree.patch \
+"
+
+LINUX_VERSION ?= "4.14.18"
+LINUX_VERSION_EXTENSION_append = "-pocketbeagle"
+
+# Modify SRCREV to a different commit hash in a copy of this recipe to
+# build a different release of the Linux kernel.
+# tag: v4.14.18 81d0cc85caabe062991ea45ddada814835d47fb0
+SRCREV_stable="81d0cc85caabe062991ea45ddada814835d47fb0"
+
+PV = "${LINUX_VERSION}+git${SRCPV}"
+
+\end{verbatim}
+\end{tcolorbox}
+
+continued:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+# Override COMPATIBLE_MACHINE to include your machine in \
+a copy of this recipe file.
+COMPATIBLE_MACHINE = "pocketbeagle"
+\end{verbatim}
+\end{tcolorbox}
+
+We will re-use the \code{defconfig} and patch from the \code{buildroot-e-ale} Git repository:
+\begin{verbatim}
+$ pushd recipes-kernel/linux/linux-pocketbeagle
+$ wget https://raw.githubusercontent.com/e-ale/buildroot-e-ale/ \
+master/board/pocketbeagle/linux.config -O defconfig
+$ wget https://raw.githubusercontent.com/e-ale/buildroot-e-ale/ \
+master/board/pocketbeagle/patches/linux/ \
+0001-Stripped-back-pocketbeagle-devicetree.patch
+$ popd
+\end{verbatim}
+
+Now, we need to change our distro layer configuration from the prior section to reflect hardware that is supported, namely the {\em PocketBeagle}. Change the \code{conf/local.conf.sample} "Machine Selection" section to be the following:
+
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+#
+# Machine Selection
+#
+# You need to select a specific machine to target the build with.
+# This sets the default machine to be pocketbeagle if no other
+# machine is selected:
+MACHINE ??= "pocketbeagle"
+\end{verbatim}
+\end{tcolorbox}
+
+This is a major change to the layer, so we should bump the layer configuration version.
+
+We also know that we need changes to the U-Boot bootloader. Let us create the directories to hold the u-boot recipes and patches.
+
+\begin{verbatim}
+$ mkdir -p recipes-bsp/u-boot/u-boot
+\end{verbatim}
+
+Once again we will re-use the files from the \code{builroot-e-ale} repo:
+\begin{verbatim}
+$ pushd recipes-bsp/u-boot/u-boot
+$ wget https://raw.githubusercontent.com/e-ale/buildroot-e-ale/ \
+master/board/pocketbeagle/patches/u-boot/ \
+0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch
+$ wget https://raw.githubusercontent.com/e-ale/buildroot-e-ale/ \
+master/board/pocketbeagle/patches/u-boot/ \
+0002-U-Boot-BeagleBone-Cape-Manager.patch
+$ wget https://raw.githubusercontent.com/e-ale/buildroot-e-ale/ \
+master/board/pocketbeagle/patches/u-boot/ \
+0003-pocketbeagle-tweaks.patch
+$ wget https://raw.githubusercontent.com/e-ale/buildroot-e-ale/ \
+master/board/pocketbeagle/uEnv.txt
+$ popd
+\end{verbatim}
+
+Now we will append the stock \code{u-boot} recipe:
+\begin{verbatim}
+$ vim recipes-bsp/u-boot/u-boot_2018.01.bb
+\end{verbatim}
+
+Use the following content:
+\begin{tcolorbox}[enhanced jigsaw,colback=bg,boxrule=0pt,arc=0pt]
+\begin{verbatim}
+# look for files in this layer first
+FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
+
+SRC_URI += "\
+    file://0001-am335x_evm-uEnv.txt-bootz-n-fixes.patch \
+    file://0002-U-Boot-BeagleBone-Cape-Manager.patch \
+    file://0003-pocketbeagle-tweaks.patch \
+    file://uEnv.txt \
+"
+\end{verbatim}
+\end{tcolorbox}
+
+\section{Summary}
+We have learned a lot more details about the different kinds of layers and how to create our own custom layers. Many developers new to the Yocto Project and Open Embedded fail to create their own layers and instead just fork \code{poky} and do all their work "in-tree". This is a major mistake and creates future technical debt to upgrade to a newer Yocto Project release. It also clutters your git repository and completely ignores the intent of layers: flexibility and modularity. Using the skills you learned in this lab to build your own layers will really pay off in your future embedded Linux development efforts.
 
 \end{document}
