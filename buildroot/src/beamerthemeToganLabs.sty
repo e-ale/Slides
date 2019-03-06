@@ -1,0 +1,209 @@
+% Beamer theme for Togan Labs presentations, copied from Bootlin
+% Copyright (C) 2019 Trevor Woerner <trevor@toganlabs.com>
+% Copyright (C) 2010 Maxime Petazzoni <maxime.petazzoni@bulix.org>
+% Creative Commons CC-by-sa 3.0
+
+\usepackage[absolute,verbose,overlay]{textpos}
+\usepackage{fancyvrb}
+\setlength{\TPHorizModule}{\paperwidth}
+\setlength{\TPVertModule}{\paperheight}
+
+\usetheme{default}
+\useinnertheme{default}
+\useoutertheme{default}
+\usecolortheme{seahorse}
+
+% Define the "Togan orange" colour
+\definecolor{tlorange}{rgb}{1,0.7725,0.4118}
+\setbeamercolor*{palette primary}{bg=tlorange}
+
+\definecolor{tlcode}{rgb}{0.5,0.5,0.5}
+\setbeamercolor{code}{fg=tlcode}
+
+\definecolor{tlcodebg}{rgb}{0.9,0.9,0.9}
+\setbeamercolor{block body}{bg=tlcodebg}
+
+\setbeamertemplate{blocks}[rounded][shadow=true]
+
+% Custom togan commands
+\newcommand{\klink}[1]{\href{http://lxr.linux.no/?=#1}{\usebeamercolor[fg]{code} {\tt #1}}}
+\newcommand{\code}[1]{{\usebeamercolor[fg]{code} \path{#1}}}
+
+\usepackage{listings}
+\usepackage{environ}
+\usepackage{setspace}
+\usepackage{etoolbox}
+
+\lstloadlanguages{C}
+\lstset{%
+  basicstyle=\tiny \ttfamily,
+  emphstyle=\color{blue}\bfseries\ttfamily,
+}
+
+\lstnewenvironment{codeblock}
+ {\begin{block}{}}
+ {\end{block}}
+
+%% Mode presentation
+\mode<presentation>
+
+% Remove navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+% Header
+\defbeamertemplate*{frametitle}{toganlabstheme}
+{
+  \vskip-2pt
+  \hbox{%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=3ex,dp=1.5ex]{frametitle}%
+      \usebeamerfont{frametitle}
+      \begin{textblock}{.2}[0.5,0.5](0.12,0.05)
+       \includegraphics[height=2.8ex]{toganlabs/toganlabs-tail.pdf}
+      \end{textblock}
+      \hspace{1.25cm}
+      \insertframetitle
+    \end{beamercolorbox}
+  }
+}
+
+% Footer
+\defbeamertemplate*{footline}{toganlabstheme}
+{
+  \hbox{%
+    \begin{beamercolorbox}[wd=\paperwidth,ht=2.25ex,dp=1ex,leftskip=0.5em]{palette primary}%
+      \Tiny
+      \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} lr }
+        \includegraphics[width=0.05\textwidth]{toganlabs/toganlabs-long.pdf}
+        - Embedded Linux Experts - & https://www.toganlabs.com
+      \end{tabular*}
+    \end{beamercolorbox}
+  }
+  \vskip0pt
+}
+
+\newcommand\tinyv{\@setfontsize\tinyv{4pt}{6}}
+
+\newcommand{\insertconference}{}
+\newcommand{\conference}[1]
+{
+  \renewcommand{\insertconference}{#1}
+}
+
+\newcommand{\insertemail}{}
+\newcommand{\email}[1]
+{
+  \renewcommand{\insertemail}{#1}
+}
+
+\newcommand{\insertslidesurl}{}
+\newcommand{\slidesurl}[1]
+{
+  \renewcommand{\insertslidesurl}{#1}
+}
+
+\newcommand{\@authors}{}
+\newcommand{\authors}[1]
+{
+  \renewcommand{\@authors}{#1}
+}
+
+\newcommand{\@trainingurl}{}
+\newcommand{\trainingurl}[1]
+{
+  \renewcommand{\@trainingurl}{#1}
+}
+
+\newcommand\titleframe[1]
+{
+  \begin{frame}{#1}
+    \begin{columns}[b]
+      \column{0.5\textwidth}
+      \Large
+      #1\\
+      \vspace{0.5cm}
+      \footnotesize
+      \@authors\\
+      \vspace{1cm}
+      \tinyv
+      Copyright © 2019  Togan Labs.\\
+      Creative Commons BY-SA 3.0 license.\\
+      Latest update: \today.\\
+      \ifdefempty{\sessionurl}{}{
+        Electronic copies of these materials:\\
+        \url{\sessionurl}\\
+      }
+      Document updates and sources:\\
+      \url{\@trainingurl}\\
+      Corrections, suggestions, contributions and translations are welcome!
+      \column{0.5\textwidth}
+      \includegraphics[height=2cm]{toganlabs/toganlabs-full.pdf}
+    \end{columns}
+  \end{frame}
+}
+
+\AtBeginSection[]
+{
+  \begin{frame}{\insertconference}
+    \begin{columns}[b]
+      \column{0.5\textwidth}
+      \huge
+      \insertsection\\
+      \vspace{0.5cm}
+      \footnotesize
+      \@authors\\
+      {\em \insertemail}\\
+      \vspace{1cm}
+      \tinyv
+      Copyright © 2019  Togan Labs\\
+      Creative Commons BY-SA 3.0 license.\\
+      Corrections, suggestions, contributions and translations are welcome!
+      \column{0.5\textwidth}
+      \includegraphics[scale=0.25]{toganlabs/toganlabs-full.pdf}
+    \end{columns}
+  \end{frame}
+}
+
+\AtBeginSubsection[]
+{
+  \begin{frame}{\insertsectionhead}
+    \huge
+    \begin{center}
+      \insertsubsection
+    \end{center}
+  \end{frame}
+}
+
+%%  first argument: slide title (will be prepended by 'Practical lab - ')
+%%  second argument: contents of the slide
+\newcommand\setuplabframe[2]{
+  \begin{frame}{Practical lab - #1}
+    \begin{columns}
+      \column{0.4\textwidth}
+      \includegraphics[width=\textwidth]{toganlabs/toganlabs-tail.pdf}
+      \column{0.6\textwidth}
+      #2
+      \end{columns}
+  \end{frame}
+}
+
+\newcommand\questionslide
+{
+  \begin{frame}
+    \centering
+    \Huge
+    Questions?\\
+    \vspace{1.5cm}
+    \huge
+    \@authors\\
+    \large
+    {\em \insertemail}\\
+    \vspace{0.5cm}
+    Slides under CC-BY-SA 3.0\\
+    \scriptsize
+    \url{\insertslidesurl}
+  \end{frame}
+}
+
+\newcommand\todo[1]{
+  {\large \color{red}TODO: #1}
+}

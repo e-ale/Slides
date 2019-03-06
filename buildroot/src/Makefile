@@ -1,4 +1,5 @@
-DOCS = petazzoni-buildroot-tutorial.pdf petazzoni-buildroot-tutorial-lab.pdf
+DOCS = petazzoni-buildroot-tutorial.pdf petazzoni-buildroot-tutorial-lab.pdf \
+       woerner-buildroot-tutorial.pdf
 
 PICTURES = \
 	$(patsubst %.dia,%.pdf,$(wildcard *.dia */*.dia)) \
@@ -20,4 +21,4 @@ all: $(PICTURES) $(DOCS)
 	dia -e $@ -t eps $^
 
 clean:
-	$(RM) -r bootlin/*.pdf *.pdf *.pyg *.snm *.toc *.vrb *.aux *.nav *.out *.dia~ *.log _minted* $(PICTURES)
+	$(RM) -r bootlin/*.pdf toganlabs/*.pdf *.pdf *.pyg *.snm *.toc *.vrb *.aux *.nav *.out *.dia~ *.log _minted* $(PICTURES)
