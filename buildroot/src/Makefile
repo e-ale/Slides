@@ -20,4 +20,4 @@ all: $(PICTURES) $(DOCS)
 	dia -e $@ -t eps $^
 
 clean:
-	$(RM) -r common/*.pdf *.pdf *.pyg *.snm *.toc *.vrb *.aux *.nav *.out *.dia~ *.log _minted* $(PICTURES)
+	$(RM) -r bootlin/*.pdf *.pdf *.pyg *.snm *.toc *.vrb *.aux *.nav *.out *.dia~ *.log _minted* $(PICTURES)
