@@ -10,6 +10,7 @@ all: $(PICTURES) $(DOCS)
 
 %.pdf: %.tex
 	$(PDFLATEX_ENV) xelatex -shell-escape $^
+	$(PDFLATEX_ENV) xelatex -shell-escape $^
 
 %.pdf: %.svg
 	inkscape -D -A $@ $<
