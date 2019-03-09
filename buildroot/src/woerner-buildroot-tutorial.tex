@@ -22,8 +22,8 @@
 \title{Getting started with Buildroot}
 \authors{Trevor Woerner}
 \email{trevor@toganlabs.com}
-\slidesurl{}
-\institute{Togan Labs}
+\slidesurl{https://cm.e-ale.org/2019/SCaLE17x/buildroot}
+\institute{Togán Labs}
 \conference{SCaLE 17x}
 
 \begin{document}
@@ -33,13 +33,135 @@
 \addtocontents{toc}{\protect\setcounter{tocdepth}{2}}
 
 \begin{frame}{Trevor Woerner}
+  \begin{columns}
+    \column{0.7\textwidth}
+      \begin{itemize}
+      \item Senior Software Developer at Togán Labs
+        \begin{itemize}
+        \item Embedded Linux Development and Consulting
+        \item Specialize in {\bf OpenEmbedded/Yocto}
+        \item Strong open-source focus
+        \end{itemize}
+      \end{itemize}
+    \column{0.3\textwidth}
+      \includegraphics[width=\textwidth]{toganlabs/toganlabs-full.pdf}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Thomas Petazzoni}
+  \begin{columns}
+    \column{0.7\textwidth}
+      \begin{itemize}
+      \item Initially created this presentation
+      \item CTO and Embedded Linux engineer at Bootlin
+      \item {\bf major} contributor to buildroot
+      \begin{itemize}
+        \item one of 3 people with commit access to buildroot
+      \end{itemize}
+      \item Strong open-source focus
+      \end{itemize}
+    \column{0.3\textwidth}
+      \includegraphics[width=\textwidth]{bootlin/logo-square.pdf}
+    \end{columns}
+\end{frame}
+
+\begin{frame}{Using an embedded Linux system}
+  \includegraphics[width=\textwidth]{woerner/imgsize.png}
+  \vspace{0.1cm}
   \begin{itemize}
-  \item Senior Software Developer at Togan Labs
+    \item the first thing you did at the very start of the labs
+    \item has allowed you to do everything you've done with the board
+    \item wrote one {\bf HUGE} image to the SDcard -- \textit{3.4GB}!!
+    \item it took my laptop over 13 minutes
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Using an embedded Linux system}
+  \begin{itemize}
+    \item what does the SDcard look like post-flashing?
+  \end{itemize}
+  \includegraphics[width=\textwidth]{woerner/fdisk.png}
+\end{frame}
+
+\begin{frame}{Using an embedded Linux system}
+  \begin{itemize}
+    \item one big file was flashed, but the card now has partitions and lots of files
+    \item works cross-platform (x86\_64 host, ARM target)
+  \end{itemize}
+  \includegraphics[width=\textwidth]{woerner/mount-sd.png}
+\end{frame}
+
+\begin{frame}{Using an embedded Linux system}
+  \begin{itemize}
+    \item it's all there in the \texttt{*.img} file
+  \end{itemize}
+  \includegraphics[width=\textwidth]{woerner/mount-file.png}
+\end{frame}
+
+\begin{frame}{Using an embedded Linux system}
+  \begin{itemize}
+    \item it's all there in the \texttt{*.img} file
+  \end{itemize}
+  \includegraphics[width=\textwidth]{woerner/mount-file-circle.png}
+\end{frame}
+
+\begin{frame}{Can I build an embedded Linux system?}
+  \begin{itemize}
+    \item with my own contents
     \begin{itemize}
-    \item Embedded Linux Development and Consulting
-    \item Specialize in {\bf OpenEmbedded/Yocto}
-    \item Strong open-source focus
+      \item bootloader
+      \item kernel
+      \item init
+      \item apps ($\rightarrow$ dependencies)
     \end{itemize}
+    \item to target multiple devices
+    \item within a certain size (smaller)
+    \item containing only what a production device needs
+    \item with the latest fixes
+    \item built up from nothing, not simply imaging a disk (horse/cart)
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Can I build an embedded Linux system?}
+  \begin{center}
+    \huge YES!
+  \end{center}
+\end{frame}
+
+\begin{frame}{Can I build an embedded Linux system?}
+  Caveats:
+  \begin{itemize}
+    \item cross-compiling/toolchain
+    \item find/get the sources (bzr, cvs, git, hg, scp, svn, wget, ...) can't hope for pre-compiled
+    \item checksum (md5, sha256, sha512, ...)
+    \item dependencies
+    \item unpack (gzip, bzip2, xz, zip, ...)
+    \item patch
+    \item configure
+    \item build (make, cmake, ant, maven, waf, ninja, gyp, meson, ...)
+    \item device-specific tweaks/tricks
+    \item lots of choice, hard to get right
+    \item one doesn't slap together a cohesive, working set, by accident
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Can I build an embedded Linux system?}
+  problems:
+  \begin{itemize}
+    \item there is no "{\bf one correct way}" to write (open-source) software
+    \begin{itemize}
+      \item language
+      \item repository system
+      \item build system
+      \item location
+      \item licensing
+    \end{itemize}
+    \item not enough developers consider cross-compilation
+  \end{itemize}
+  solution:
+  \begin{itemize}
+    \item use an embedded Linux build system
+    \item {\bf PLEASE} don't "roll your own"
   \end{itemize}
 \end{frame}
 
@@ -52,8 +174,8 @@
   \only<1>{
     \begin{itemize}
     \item[+] Readily available
-    \item[-] Large, usually 100+ MB
-    \item[-] Not available for all architectures
+    \item[-] Large, usually 100+ MB ($\rightarrow$ GB!)
+    \item[-] Not available for all architectures/devices
     \item[-] Not easy to customize
     \item[-] Generally require native compilation
     \end{itemize}
@@ -84,7 +206,24 @@
   \begin{itemize}[<+->]
   \item Building from source $\rightarrow$ lot of flexibility
   \item Cross-compilation $\rightarrow$ leveraging fast build machines
-  \item Recipes for building components $\rightarrow$ easy
+  \item {\bf Recipes} for building components $\rightarrow$ easy
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Recipes, meta-data}
+  \begin{itemize}
+    \item all embedded Linux build systems have:
+    \begin{itemize}
+      \item a tool for building the image (i.e. \texttt{make})
+      \item the {\bf recipes} or {\bf meta-data} describing how to handle each component
+      \begin{itemize}
+        \item where it's located (github, gitlab, bitbucket, ...)
+        \item how to fetch it (wget, svn, git, ...)
+        \item patches
+        \item how to build (make, meson, cmake, ...)
+      \end{itemize}
+      \item configuration
+    \end{itemize}
   \end{itemize}
 \end{frame}
 
@@ -101,7 +240,7 @@
   \item {\bf Fast}, simple root filesystem in minutes
   \item {\bf Easy} to use and understand: kconfig and make
   \item {\bf Small} root filesystem, default 2 MB
-  \item More than {\bf 2200 packages} available
+  \item Roughly {\bf 2170 packages} available
   \item Generates filesystem images, not a distribution
   \item Vendor neutral
   \item Active community, stable releases every 3 months
@@ -123,7 +262,7 @@ $ make menuconfig
   \end{block}
   \vspace{0.1cm}
   \begin{center}
-    \includegraphics[width=0.6\textwidth]{buildroot-screenshot.png}
+    \includegraphics[width=0.6\textwidth]{woerner/buildroot-screenshot.png}
   \end{center}
 \end{frame}
 
@@ -145,12 +284,11 @@ $ make menuconfig
     \only<1>{
       \begin{itemize}
       \item Architecture\\
-        {\small ARC, ARM, AArch64, Blackfin, csky, m68k, Microblaze,
-          MIPS(64), NIOS II, OpenRisc, PowerPC(64), SuperH, SPARC,
-          x86, x86\_64, Xtensa}
-      \item Specific processor
+        {\small ARC, ARM, Aarch64, csky, m68k, Microblaze,
+          MIPS(64), NIOS II, OpenRISC, PowerPC(64), RISC-V,
+          SuperH, SPARC(64), x86, x86\_64, Xtensa}
+      \item Specific processor (variant) / Floating-point strategy
       \item ABI
-      \item Floating point strategy
       \end{itemize}
     }
     \only<2>{
@@ -167,7 +305,7 @@ $ make menuconfig
       \item Buildroot toolchain
         \begin{itemize}
         \item Buildroot builds the toolchain
-        \item uClibc, glibc, musl
+        \item uClibc-ng, glibc, musl
         \end{itemize}
       \item External toolchain
         \begin{itemize}
@@ -197,8 +335,8 @@ $ make menuconfig
     }
     \only<6>{
       \begin{itemize}
-      \item More than 2200 packages
-      \item Qt4, Qt5, X.org, Gtk, EFL
+      \item Roughly 2170 packages
+      \item Qt5, X.org, Gtk, EFL
       \item GStreamer, ffmpeg
       \item Python, Perl, Ruby, Lua, Erlang
       \item Samba, OpenSSL, OpenSSH, dropbear, lighttpd
@@ -209,23 +347,31 @@ $ make menuconfig
     \only<7>{
       \begin{itemize}
       \item Major filesystem formats supported
-      \item cloop
-      \item cpio, for kernel initramfs
-      \item cramfs
-      \item ext2/3/4
-      \item jffs2
-      \item romfs
-      \item squashfs
-      \item tar
-      \item ubifs
+        \begin{itemize}
+          \item axfs
+          \item btrfs
+          \item cloop
+          \item cpio, for kernel initramfs
+          \item cramfs
+          \item ext2/3/4
+          \item f2fs
+          \item jffs2
+          \item romfs
+          \item squashfs
+          \item tar
+          \item ubifs
+          \item yaffs2
+        \end{itemize}
       \end{itemize}
     }
     \only<8>{
       \begin{itemize}
+      \item Barebox
+      \item Gummiboot
       \item Grub2
+      \item shim
       \item Syslinux
       \item U-Boot
-      \item Barebox
       \item and more platform-specific bootloaders: imx-bootlets,
         at91bootstrap, etc.
       \end{itemize}
@@ -418,23 +564,6 @@ sha256 70e12e2a60151b9ed...  COPYING
   \item Mailing list:
     \url{http://lists.busybox.net/pipermail/buildroot/}
   \item IRC channel: \code{buildroot} on Freenode
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Today's lab}
-  \begin{itemize}
-  \item {\bf Step 1}: do a minimal build for the PocketBeagle, with
-    just a bootloader, Linux kernel and minimal root
-    filesystem. Generate a ready-to-use SD card image.
-  \item {\bf Step 2}: enable network over USB and SSH connectivity
-    using Dropbear. Shows how to use a rootfs overlay and how to add
-    packages.
-  \item {\bf Step 3}: customize the Linux kernel configuration,
-    compile a small application that uses the GPIO, first manually,
-    and then using a new Buildroot package
-  \item Follow the instructions at
-    \url{https://github.com/e-ale/Slides/blob/master/buildroot-lab.pdf}
-  \item {\bf Don't hesitate to request help and ask questions!}
   \end{itemize}
 \end{frame}
 

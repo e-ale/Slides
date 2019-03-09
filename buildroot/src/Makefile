@@ -1,5 +1,5 @@
 DOCS = petazzoni-buildroot-tutorial.pdf petazzoni-buildroot-tutorial-lab.pdf \
-       woerner-buildroot-tutorial.pdf
+       woerner-buildroot-tutorial.pdf woerner-buildroot-tutorial-lab.pdf \
 
 PICTURES = \
 	$(patsubst %.dia,%.pdf,$(wildcard *.dia */*.dia)) \
@@ -8,7 +8,11 @@ PICTURES = \
 
 all: $(PICTURES) $(DOCS)
 
+petazzoni-buildroot-tutorial.pdf: beamerthemeBootlin.sty
+woerner-buildroot-tutorial.pdf: beamerthemeToganLabs.sty
+
 %.pdf: %.tex
+	$(PDFLATEX_ENV) xelatex -shell-escape $^
 	$(PDFLATEX_ENV) xelatex -shell-escape $^
 
 %.pdf: %.svg
