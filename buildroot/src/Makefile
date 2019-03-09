@@ -1,5 +1,5 @@
 DOCS = petazzoni-buildroot-tutorial.pdf petazzoni-buildroot-tutorial-lab.pdf \
-       woerner-buildroot-tutorial.pdf
+       woerner-buildroot-tutorial.pdf woerner-buildroot-tutorial-lab.pdf \
 
 PICTURES = \
 	$(patsubst %.dia,%.pdf,$(wildcard *.dia */*.dia)) \
